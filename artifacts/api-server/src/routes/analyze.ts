@@ -12,32 +12,59 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-const CATEGORIES: Record<string, string> = {
-  computer_hardware: "Computer / Hardware",
-  mobile_device: "Mobile Device",
-  general_electronics: "General Electronics",
-  other: "General Electronics / Other Device",
+const VALID_CATEGORIES = [
+  "electronics",
+  "furniture",
+  "vehicles",
+  "food",
+  "documents",
+  "people_portraits",
+  "nature_outdoors",
+  "other",
+] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  electronics: "Electronics",
+  furniture: "Furniture",
+  vehicles: "Vehicles",
+  food: "Food",
+  documents: "Documents",
+  people_portraits: "People / Portraits",
+  nature_outdoors: "Nature / Outdoors",
+  other: "General Subject",
 };
 
 function buildPrompt(category: string): string {
-  const label = CATEGORIES[category] ?? "Electronics";
-  return `You are an expert electronics diagnostics technician specializing in ${label} repair and troubleshooting.
+  const label = CATEGORY_LABELS[category] ?? "subject";
 
-Analyze the provided image of a ${label} carefully.
+  const prompts: Record<string, string> = {
+    electronics: `You are an expert electronics technician. Analyze this image of an electronic device or component. Identify any damage, wear, faults, or issues. Provide actionable repair or maintenance suggestions.`,
+    furniture: `You are an expert furniture appraiser and restoration specialist. Analyze this image of furniture. Identify any damage, wear, structural issues, or style concerns. Suggest restoration or improvement steps.`,
+    vehicles: `You are an expert automotive and vehicle inspector. Analyze this image of a vehicle or vehicle component. Identify any visible damage, wear, mechanical issues, or safety concerns. Suggest maintenance or repair actions.`,
+    food: `You are a professional food safety inspector and culinary expert. Analyze this image of food. Identify freshness, quality, presentation issues, or safety concerns. Provide recommendations for improvement or handling.`,
+    documents: `You are a document analysis expert. Analyze this image of a document. Identify legibility issues, damage, completeness concerns, or formatting problems. Suggest improvements or preservation steps.`,
+    people_portraits: `You are a professional photographer and portrait analyst. Analyze this image of a person or portrait. Identify composition, lighting, focus, and presentation strengths and weaknesses. Suggest improvements for the photo or presentation.`,
+    nature_outdoors: `You are a professional nature photographer and environmental analyst. Analyze this outdoor or nature image. Identify composition, lighting, subject matter, and any environmental observations. Suggest photography improvements or note interesting features.`,
+    other: `You are a professional image analyst. Analyze this image thoroughly. Identify the subject matter, notable features, any issues or concerns visible, and provide relevant observations and suggestions.`,
+  };
+
+  const basePrompt = prompts[category] ?? prompts.other;
+
+  return `${basePrompt}
 
 Respond ONLY with a valid JSON object (no markdown, no code fences) in this exact format:
 {
-  "analysisText": "A 2-3 sentence summary of what you observe in the image, including the device condition and any notable findings.",
-  "issues": ["Issue 1", "Issue 2", "Issue 3"],
-  "suggestions": ["Suggestion 1", "Suggestion 2", "Suggestion 3"]
+  "analysisText": "A 2-3 sentence professional summary of what you observe in the image.",
+  "issues": ["Issue or observation 1", "Issue or observation 2"],
+  "suggestions": ["Suggestion 1", "Suggestion 2"]
 }
 
 Guidelines:
-- "analysisText": Provide an objective, professional overview of what you see. Mention the device type, visible condition, and key observations.
-- "issues": List specific problems, damage, wear, or anomalies you identify. Be precise and technical. Include 2-5 items. If no issues are found, return ["No visible issues detected"].
-- "suggestions": Provide actionable repair, maintenance, or improvement recommendations based on the issues. Include 2-5 items. If no issues, return ["Device appears to be in good condition. Regular maintenance recommended."].
+- "analysisText": Objective, professional overview of what you see. Mention the subject, condition, and key observations.
+- "issues": List 2-5 specific problems, damage, wear, or notable observations. Be precise. If nothing is wrong, return ["No significant issues detected"].
+- "suggestions": List 2-5 actionable recommendations. If no issues, return ["Subject appears to be in good condition."].
 
-Be concise, accurate, and professional. Focus on what is visible in the image.`;
+Be concise, accurate, and professional.`;
 }
 
 router.post("/analyze", upload.single("image"), async (req, res) => {
@@ -49,16 +76,15 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
     return;
   }
 
-  const validCategories = ["computer_hardware", "mobile_device", "general_electronics", "other"];
-  if (!category || !validCategories.includes(category)) {
-    res.status(400).json({ error: "Invalid or missing category" });
+  if (!category || !(VALID_CATEGORIES as readonly string[]).includes(category)) {
+    res.status(400).json({ error: `Invalid or missing category. Must be one of: ${VALID_CATEGORIES.join(", ")}` });
     return;
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     req.log.error("GEMINI_API_KEY not configured");
-    res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+    res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server" });
     return;
   }
 
@@ -93,11 +119,11 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(cleaned);
     } catch {
-      req.log.warn({ rawText }, "Failed to parse Gemini JSON response, using fallback");
+      req.log.warn({ rawText }, "Failed to parse Gemini JSON response, using raw text");
       parsed = {
         analysisText: rawText || "Analysis complete.",
-        issues: ["Unable to parse structured response"],
-        suggestions: ["Please try again with a clearer image"],
+        issues: ["Structured response unavailable — see summary above"],
+        suggestions: ["Try again with a clearer, well-lit image"],
       };
     }
 
@@ -125,7 +151,8 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Error analyzing image");
-    res.status(500).json({ error: "Failed to analyze image" });
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: `Failed to analyze image: ${message}` });
   }
 });
 

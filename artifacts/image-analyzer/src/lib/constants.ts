@@ -1,8 +1,12 @@
 export const CATEGORIES = {
-  computer_hardware: "Computer / Hardware",
-  mobile_device: "Mobile Device",
-  general_electronics: "General Electronics",
-  other: "Other"
+  electronics: "Electronics",
+  furniture: "Furniture",
+  vehicles: "Vehicles",
+  food: "Food",
+  documents: "Documents",
+  people_portraits: "People / Portraits",
+  nature_outdoors: "Nature / Outdoors",
+  other: "Other",
 } as const;
 
 export type CategoryKey = keyof typeof CATEGORIES;
