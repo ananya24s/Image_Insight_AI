@@ -151,6 +151,24 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Error analyzing image");
+
+    const apiErr = err as { status?: number; message?: string };
+
+    if (apiErr.status === 429) {
+      let retryMsg = "You have exceeded your Gemini API quota.";
+      try {
+        const body = JSON.parse(apiErr.message ?? "{}");
+        const detail: string = body?.error?.message ?? "";
+        const retryMatch = detail.match(/retry in ([\d.]+s)/i);
+        if (retryMatch) retryMsg += ` Please retry in ${retryMatch[1]}.`;
+        else retryMsg += " Please wait a moment and try again, or upgrade your Gemini API plan.";
+      } catch {
+        retryMsg += " Please wait and try again.";
+      }
+      res.status(429).json({ error: retryMsg });
+      return;
+    }
+
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: `Failed to analyze image: ${message}` });
   }

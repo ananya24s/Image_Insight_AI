@@ -52,11 +52,12 @@ export default function Home() {
         body: formData
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Analysis failed");
+        throw new Error(data?.error ?? "Analysis failed");
       }
 
-      const data = await res.json();
       setResult(data);
       
       queryClient.invalidateQueries({ queryKey: getGetHistoryQueryKey() });
@@ -68,7 +69,7 @@ export default function Home() {
     } catch (err) {
       toast({
         title: "Analysis Failed",
-        description: "There was an error analyzing the device.",
+        description: err instanceof Error ? err.message : "There was an error analyzing the image.",
         variant: "destructive"
       });
     } finally {
