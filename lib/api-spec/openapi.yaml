@@ -139,6 +139,9 @@ components:
           items:
             type: string
           description: List of actionable suggestions
+        relevanceScore:
+          type: integer
+          description: 0-100 score indicating how well the image matches the selected category
         createdAt:
           type: string
           description: ISO 8601 timestamp

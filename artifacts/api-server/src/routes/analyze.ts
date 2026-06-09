@@ -56,13 +56,15 @@ Respond ONLY with a valid JSON object (no markdown, no code fences) in this exac
 {
   "analysisText": "A 2-3 sentence professional summary of what you observe in the image.",
   "issues": ["Issue or observation 1", "Issue or observation 2"],
-  "suggestions": ["Suggestion 1", "Suggestion 2"]
+  "suggestions": ["Suggestion 1", "Suggestion 2"],
+  "relevanceScore": 85
 }
 
 Guidelines:
 - "analysisText": Objective, professional overview of what you see. Mention the subject, condition, and key observations.
 - "issues": List 2-5 specific problems, damage, wear, or notable observations. Be precise. If nothing is wrong, return ["No significant issues detected"].
 - "suggestions": List 2-5 actionable recommendations. If no issues, return ["Subject appears to be in good condition."].
+- "relevanceScore": A number 0-100 indicating how well the image matches the selected category. 0 = completely unrelated, 100 = perfect match.
 
 Be concise, accurate, and professional.`;
 }
@@ -114,7 +116,7 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
 
     const rawText = response.text ?? "";
 
-    let parsed: { analysisText: string; issues: string[]; suggestions: string[] };
+    let parsed: { analysisText: string; issues: string[]; suggestions: string[]; relevanceScore?: number };
     try {
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(cleaned);
@@ -129,6 +131,11 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
 
     const imageData = `data:${mimeType};base64,${base64Image}`;
 
+    const relevanceScore =
+      typeof parsed.relevanceScore === "number"
+        ? Math.min(100, Math.max(0, Math.round(parsed.relevanceScore)))
+        : null;
+
     const [inserted] = await db
       .insert(analysesTable)
       .values({
@@ -137,6 +144,7 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
         analysisText: parsed.analysisText,
         issues: JSON.stringify(parsed.issues),
         suggestions: JSON.stringify(parsed.suggestions),
+        relevanceScore,
       })
       .returning();
 
@@ -147,6 +155,7 @@ router.post("/analyze", upload.single("image"), async (req, res) => {
       analysisText: inserted.analysisText,
       issues: JSON.parse(inserted.issues) as string[],
       suggestions: JSON.parse(inserted.suggestions) as string[],
+      relevanceScore: inserted.relevanceScore ?? undefined,
       createdAt: inserted.createdAt.toISOString(),
     });
   } catch (err) {
@@ -188,6 +197,7 @@ router.get("/history", async (req, res) => {
       analysisText: row.analysisText,
       issues: JSON.parse(row.issues) as string[],
       suggestions: JSON.parse(row.suggestions) as string[],
+      relevanceScore: row.relevanceScore ?? undefined,
       createdAt: row.createdAt.toISOString(),
     }));
 

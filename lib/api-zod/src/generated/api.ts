@@ -33,6 +33,7 @@ export const AnalyzeImageResponse = zod.object({
   "analysisText": zod.string().describe('Full analysis text from Gemini'),
   "issues": zod.array(zod.string()).describe('List of identified issues'),
   "suggestions": zod.array(zod.string()).describe('List of actionable suggestions'),
+  "relevanceScore": zod.number().optional().describe('0-100 score indicating how well the image matches the selected category'),
   "createdAt": zod.string().describe('ISO 8601 timestamp')
 })
 
@@ -48,6 +49,7 @@ export const GetHistoryResponseItem = zod.object({
   "analysisText": zod.string().describe('Full analysis text from Gemini'),
   "issues": zod.array(zod.string()).describe('List of identified issues'),
   "suggestions": zod.array(zod.string()).describe('List of actionable suggestions'),
+  "relevanceScore": zod.number().optional().describe('0-100 score indicating how well the image matches the selected category'),
   "createdAt": zod.string().describe('ISO 8601 timestamp')
 })
 export const GetHistoryResponse = zod.array(GetHistoryResponseItem)

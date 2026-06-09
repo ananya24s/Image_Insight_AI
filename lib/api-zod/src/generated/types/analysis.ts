@@ -18,6 +18,8 @@ export interface Analysis {
   issues: string[];
   /** List of actionable suggestions */
   suggestions: string[];
+  /** 0-100 score indicating how well the image matches the selected category */
+  relevanceScore?: number;
   /** ISO 8601 timestamp */
   createdAt: string;
 }

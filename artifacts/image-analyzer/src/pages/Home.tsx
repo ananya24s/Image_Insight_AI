@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, X, AlertCircle, CheckCircle2, ChevronRight, Activity } from "lucide-react";
+import { Upload, X, AlertCircle, CheckCircle2, ChevronRight, Activity, TriangleAlert } from "lucide-react";
 import { CATEGORIES, CategoryKey } from "@/lib/constants";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetHistoryQueryKey, type Analysis } from "@workspace/api-client-react";
@@ -196,7 +196,38 @@ export default function Home() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-8">
-                
+
+                {result.relevanceScore !== undefined && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-mono font-bold tracking-wider text-muted-foreground uppercase">Category Relevance</h3>
+                      <span className={`text-sm font-mono font-bold ${
+                        result.relevanceScore >= 71 ? "text-green-400" :
+                        result.relevanceScore >= 41 ? "text-yellow-400" :
+                        "text-red-400"
+                      }`}>
+                        {result.relevanceScore}/100
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-secondary/50 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          result.relevanceScore >= 71 ? "bg-green-500" :
+                          result.relevanceScore >= 41 ? "bg-yellow-500" :
+                          "bg-red-500"
+                        }`}
+                        style={{ width: `${result.relevanceScore}%` }}
+                      />
+                    </div>
+                    {result.relevanceScore < 40 && (
+                      <div className="flex items-center gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm">
+                        <TriangleAlert className="h-4 w-4 shrink-0" />
+                        <span>Image may not match the selected category</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   <h3 className="text-sm font-mono font-bold tracking-wider text-muted-foreground uppercase">Findings</h3>
                   <div className="p-4 rounded-md bg-secondary/30 border border-border text-sm leading-relaxed whitespace-pre-wrap">
